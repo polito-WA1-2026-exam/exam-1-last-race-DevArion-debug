@@ -1,16 +1,15 @@
-import mapService from "../services/mapService";
+import mapService from "../services/mapService.js";
 
 const mapController = {
-     async getMapData(req, res, next) {
+    async getMapData(req, res, next) {
         try {
             const mapData = await mapService.getFullMapNetwork();
-            return res.json(mapData);
+            return res.status(200).json(mapData);
+        } catch (error) {
+            console.error("Error fetching map network network layout:", error);
+            return res.status(500).json({ error: "Failed to retrieve map components." });
         }
-        catch (err) {
-            return next(err);
-            
-        }
-     }
-}
+    }
+};
 
 export default mapController;
