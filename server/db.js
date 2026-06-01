@@ -57,10 +57,8 @@ db.serialize(() => {
     );
   `);
 
-  
   db.get('SELECT COUNT(*) AS count FROM stations', [], (err, row) => {
     if (err) return console.error(err.message);
-    
     if (row.count === 0) {
       seedData();
     }
@@ -78,7 +76,6 @@ function seedData() {
     stations.forEach(name => stmtStation.run(name));
     stmtStation.finalize();
 
-    console.log('Inserting events...');
     const events = [
       { desc: 'Train delayed due to technical issues', eff: -2 },
       { desc: 'Smooth transit with zero queueing', eff: 2 },
@@ -93,44 +90,52 @@ function seedData() {
     events.forEach(e => stmtEvent.run(e.desc, e.eff));
     stmtEvent.finalize();
 
-    console.log('Inserting segments...');
     const segments = [
       { line: 'Red Line', start: 1, end: 2 },
       { line: 'Red Line', start: 2, end: 3 },
       { line: 'Red Line', start: 3, end: 4 },
-      { line: 'Red Line', start: 4, end: 5 },
+      
+      { line: 'Blue Line', start: 1, end: 5 },
       { line: 'Blue Line', start: 5, end: 6 },
       { line: 'Blue Line', start: 6, end: 7 },
-      { line: 'Blue Line', start: 7, end: 8 },
+      
+      { line: 'Green Line', start: 2, end: 8 },
+      { line: 'Green Line', start: 8, end: 9 },
       { line: 'Green Line', start: 9, end: 10 },
-      { line: 'Green Line', start: 10, end: 11 },
-      { line: 'Green Line', start: 11, end: 12 },
-      { line: 'Interchange Link', start: 2, end: 9 },
-      { line: 'Interchange Link', start: 4, end: 11 }
+      
+      { line: 'Yellow Line', start: 3, end: 11 },
+      { line: 'Yellow Line', start: 11, end: 12 },
+      { line: 'Yellow Line', start: 12, end: 7 }
     ];
     const stmtSegment = db.prepare('INSERT INTO segments (line_name, start_station, end_station) VALUES (?, ?, ?)');
     segments.forEach(s => stmtSegment.run(s.line, s.start, s.end));
     stmtSegment.finalize();
 
-    console.log('Seeding structural tables completed.');
-  });
+    const defaultUsers = [
+      { user: 'user1', email: 'user1@polito.it' },
+      { user: 'user2', email: 'user2@polito.it' },
+      { user: 'user3', email: 'user3@polito.it' }
+    ];
 
-  const defaultUsers = [
-    { user: 'user1', email: 'user1@polito.it' },
-    { user: 'user2', email: 'user2@polito.it' },
-    { user: 'user3', email: 'user3@polito.it' }
-  ];
-
-  defaultUsers.forEach(u => {
-    const salt = crypto.randomBytes(16).toString('hex');
-    crypto.scrypt('password123', salt, 64, (err, derivedKey) => {
-      if (err) return console.error(err);
+    defaultUsers.forEach(u => {
+      const salt = crypto.randomBytes(16).toString('hex');
+      const derivedKey = crypto.scryptSync('password123', salt, 64);
       const hash = derivedKey.toString('hex');
       db.run(
         'INSERT INTO users (username, email, hash, salt) VALUES (?, ?, ?, ?)',
         [u.user, u.email, hash, salt]
       );
     });
+
+    const pastGames = [
+      { userId: 1, score: 24 },
+      { userId: 1, score: 14 },
+      { userId: 2, score: 32 },
+      { userId: 2, score: 8 }
+    ];
+    const stmtGame = db.prepare('INSERT INTO games (user_id, score) VALUES (?, ?)');
+    pastGames.forEach(g => stmtGame.run(g.userId, g.score));
+    stmtGame.finalize();
   });
 }
 

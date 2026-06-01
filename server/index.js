@@ -21,7 +21,7 @@ app.use(session({
   secret: "polito-secret-key-change-me", 
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, secure: false } // Set secure: true only if using HTTPS
+  cookie: { httpOnly: true, secure: false }
 }));
 
 app.use(passport.initialize());

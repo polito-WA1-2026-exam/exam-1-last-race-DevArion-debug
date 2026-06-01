@@ -16,7 +16,7 @@ class GameDAO {
 
     getGamesByUserId(userId) {
         return new Promise((resolve, reject) => {
-            const sql = 'SELECT * FROM games WHERE user_id = ?';
+            const sql = 'SELECT id, score, date_played FROM games WHERE user_id = ? ORDER BY score DESC';
             db.all(sql, [userId], (err, rows) => {
                 if (err) {
                     reject(err);
