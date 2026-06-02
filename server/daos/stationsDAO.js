@@ -1,5 +1,4 @@
-import sqlite3 from 'sqlite3';
-
+import db from "../db.js";
 class StationsDAO {
     getAllStations() {
         return new Promise((resolve, reject) => {

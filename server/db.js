@@ -119,7 +119,7 @@ function seedData() {
 
     defaultUsers.forEach(u => {
       const salt = crypto.randomBytes(16).toString('hex');
-      const derivedKey = crypto.scryptSync('password123', salt, 64);
+      const derivedKey = crypto.scryptSync('password123', salt, 32);
       const hash = derivedKey.toString('hex');
       db.run(
         'INSERT INTO users (username, email, hash, salt) VALUES (?, ?, ?, ?)',

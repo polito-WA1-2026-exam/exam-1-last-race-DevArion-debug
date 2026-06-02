@@ -1,5 +1,4 @@
-import sqlite3 from 'sqlite3';
-
+import db from "../db.js";
 class SegmentsDAO {
     getAllSegments() {
         return new Promise((resolve, reject) => {
