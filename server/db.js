@@ -34,7 +34,17 @@ db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS stations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE
+      name TEXT NOT NULL UNIQUE,
+      x INTEGER NOT NULL,
+      y INTEGER NOT NULL
+    );
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      color TEXT NOT NULL
     );
   `);
 
@@ -49,9 +59,10 @@ db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS segments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      line_name TEXT NOT NULL,
+      line_id INTEGER NOT NULL,
       start_station INTEGER NOT NULL, 
       end_station INTEGER NOT NULL,   
+      FOREIGN KEY (line_id) REFERENCES lines(id),
       FOREIGN KEY (start_station) REFERENCES stations(id),
       FOREIGN KEY (end_station) REFERENCES stations(id)
     );
@@ -68,13 +79,33 @@ db.serialize(() => {
 function seedData() {
   db.serialize(() => {
     const stations = [
-      'Centrale', 'Porta Susa', 'Bernini', 'Rivoli', 'Massaua', 
-      'Pozzo Strada', 'Marche', 'Paradiso', 'Fermi', 'Carducci', 
-      'Dante', 'Nizza'
-    ];
-    const stmtStation = db.prepare('INSERT INTO stations (name) VALUES (?)');
-    stations.forEach(name => stmtStation.run(name));
+      { name: 'Centrale', x: 150, y: 200 },
+      { name: 'Porta Susa', x: 280, y: 120 },
+      { name: 'Bernini', x: 420, y: 180 },
+      { name: 'Rivoli', x: 520, y: 280 },
+      { name: 'Massaua', x: 280, y: 280 },
+      { name: 'Pozzo Strada', x: 180, y: 380 },
+      { name: 'Marche', x: 520, y: 400 },
+      { name: 'Paradiso', x: 420, y: 320 },
+      { name: 'Fermi', x: 620, y: 220 },
+      { name: 'Carducci', x: 80, y: 250 },
+      { name: 'Dante', x: 350, y: 450 },
+      { name: 'Nizza', x: 480, y: 480 }
+    ];  
+    
+    const stmtStation = db.prepare('INSERT INTO stations (name, x, y) VALUES (?, ?, ?)');
+    stations.forEach(s => stmtStation.run(s.name, s.x, s.y));
     stmtStation.finalize();
+
+    const lines = [
+      { name: 'Red Line', color: '#ef4444' },    
+      { name: 'Blue Line', color: '#3b82f6' },   
+      { name: 'Green Line', color: '#10b981' },  
+      { name: 'Yellow Line', color: '#eab308' }
+    ];
+    const stmtLine = db.prepare('INSERT INTO lines (name, color) VALUES (?, ?)');
+    lines.forEach(l => stmtLine.run(l.name, l.color));
+    stmtLine.finalize();
 
     const events = [
       { desc: 'Train delayed due to technical issues', eff: -2 },
@@ -91,24 +122,24 @@ function seedData() {
     stmtEvent.finalize();
 
     const segments = [
-      { line: 'Red Line', start: 1, end: 2 },
-      { line: 'Red Line', start: 2, end: 3 },
-      { line: 'Red Line', start: 3, end: 4 },
+      { lineId: 1, start: 1, end: 2 },
+      { lineId: 1, start: 2, end: 3 },
+      { lineId: 1, start: 3, end: 4 },
       
-      { line: 'Blue Line', start: 1, end: 5 },
-      { line: 'Blue Line', start: 5, end: 6 },
-      { line: 'Blue Line', start: 6, end: 7 },
+      { lineId: 2, start: 1, end: 5 },
+      { lineId: 2, start: 5, end: 6 },
+      { lineId: 2, start: 6, end: 7 },
       
-      { line: 'Green Line', start: 2, end: 8 },
-      { line: 'Green Line', start: 8, end: 9 },
-      { line: 'Green Line', start: 9, end: 10 },
+      { lineId: 3, start: 2, end: 8 },
+      { lineId: 3, start: 8, end: 9 },
+      { lineId: 3, start: 9, end: 10 },
       
-      { line: 'Yellow Line', start: 3, end: 11 },
-      { line: 'Yellow Line', start: 11, end: 12 },
-      { line: 'Yellow Line', start: 12, end: 7 }
+      { lineId: 4, start: 3, end: 11 },
+      { lineId: 4, start: 11, end: 12 },
+      { lineId: 4, start: 12, end: 7 }
     ];
-    const stmtSegment = db.prepare('INSERT INTO segments (line_name, start_station, end_station) VALUES (?, ?, ?)');
-    segments.forEach(s => stmtSegment.run(s.line, s.start, s.end));
+    const stmtSegment = db.prepare('INSERT INTO segments (line_id, start_station, end_station) VALUES (?, ?, ?)');
+    segments.forEach(s => stmtSegment.run(s.lineId, s.start, s.end));
     stmtSegment.finalize();
 
     const defaultUsers = [

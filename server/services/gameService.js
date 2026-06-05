@@ -6,37 +6,38 @@ import { buildStationLines } from "../helpers/buildStationLinesHelper.js";
 
 class GameService {
     async calculateMinDistance(startStationId) {
-        const allSegments = await segmentsDAO.getAllSegments();
-        const graph = {};
+    const allSegments = await segmentsDAO.getAllSegments();
+    const graph = {};
 
-        allSegments.forEach(segment => {
-            if (!graph[segment.start_station]) {
-                graph[segment.start_station] = [];
-            }
-            graph[segment.start_station].push(segment);
-        });
+    allSegments.forEach(segment => {
+        if (!graph[segment.start_station]) graph[segment.start_station] = [];
+        graph[segment.start_station].push({ ...segment, to: segment.end_station });
 
-        const queue = [startStationId];
-        const visited = new Set();
-        const distances = {};
-        distances[startStationId] = 0;
+        if (!graph[segment.end_station]) graph[segment.end_station] = [];
+        graph[segment.end_station].push({ ...segment, to: segment.start_station });
+    });
 
-        while (queue.length > 0) {
-            const current = queue.shift();
-            visited.add(current);
-            const neighbors = graph[current] || [];
-            neighbors.forEach(neighbor => {
-                if (!visited.has(neighbor.end_station)) {
-                    const newDistance = distances[current] + 1;
-                    if (distances[neighbor.end_station] === undefined || newDistance < distances[neighbor.end_station]) {
-                        distances[neighbor.end_station] = newDistance;
-                        queue.push(neighbor.end_station);
-                    }
+    const queue = [startStationId];
+    const visited = new Set();
+    const distances = {};
+    distances[startStationId] = 0;
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        visited.add(current);
+        const neighbors = graph[current] || [];
+        neighbors.forEach(neighbor => {
+            if (!visited.has(neighbor.to)) {
+                const newDistance = distances[current] + 1;
+                if (distances[neighbor.to] === undefined || newDistance < distances[neighbor.to]) {
+                    distances[neighbor.to] = newDistance;
+                    queue.push(neighbor.to);
                 }
-            });
-        }
-        return distances;
+            }
+        });
     }
+    return distances;
+}
 
     async generateChallenge() {
         const allStations = await stationsDAO.getAllStations();
@@ -58,62 +59,59 @@ class GameService {
     }
 
     async validateRoute(routeSegmentIds, startStationId, endStationId, startTime) {
-        const allSegments = await segmentsDAO.getAllSegments();
-        const invalidResponse = { isValid: false, submittedSegments: [] };
+    const allSegments = await segmentsDAO.getAllSegments();
+    const invalidResponse = { isValid: false, submittedSegments: [] };
 
-        const segmentMap = new Map(
-            allSegments.map(segment => [segment.id, segment])
-        );
+    if (!startStationId || !endStationId || !routeSegmentIds || routeSegmentIds.length === 0) {
+        return invalidResponse;
+    }
 
-        const stationLines = buildStationLines(allSegments);
+    const uniqueSegmentIds = new Set(routeSegmentIds);
+    if (uniqueSegmentIds.size !== routeSegmentIds.length) {
+        return invalidResponse;
+    }
 
-        const currentTime = Date.now();
-        const totalElapsedTime = (currentTime - startTime) / 1000;
+    const segmentMap = new Map(allSegments.map(s => [s.id, s]));
+    const stationLines = buildStationLines(allSegments);
 
-        if (totalElapsedTime > 90)
-            return invalidResponse;
+    const currentTime = Date.now();
+    if ((currentTime - startTime) / 1000 > 90) return invalidResponse;
 
-        if (!routeSegmentIds || routeSegmentIds.length === 0)
-            return invalidResponse;
+    const submittedSegments = [];
+    let currentStationId = startStationId;
+    let previousLineId = null;
 
-        const submittedSegments = routeSegmentIds.map(id =>
-            segmentMap.get(id)
-        );
+    for (let i = 0; i < routeSegmentIds.length; i++) {
+        const segment = segmentMap.get(routeSegmentIds[i]);
+        if (!segment) return invalidResponse;
 
-        if (submittedSegments.some(segment => segment === undefined))
-            return invalidResponse;
+        const isAtStart = segment.start_station === currentStationId;
+        const isAtEnd = segment.end_station === currentStationId;
 
-        if (submittedSegments[0].start_station !== startStationId)
-            return invalidResponse;
-
-        for (let i = 0; i < submittedSegments.length - 1; i++) {
-            const currentSegment = submittedSegments[i];
-            const nextSegment = submittedSegments[i + 1];
-
-            if (currentSegment.end_station !== nextSegment.start_station)
-                return invalidResponse;
-
-            if (currentSegment.line_id !== nextSegment.line_id) {
-                const interchangeStation = currentSegment.end_station;
-
-                const linesAtStation =
-                    stationLines[interchangeStation]?.size || 0;
-
-                if (linesAtStation <= 1)
-                    return invalidResponse;
-            }
+        if (!isAtStart && !isAtEnd) {
+            return invalidResponse; 
         }
 
-        const lastSegment = submittedSegments[submittedSegments.length - 1];
+        if (previousLineId !== null && previousLineId !== segment.line_id) {
+            const linesAtStation = stationLines[currentStationId]?.size || 0;
+            if (linesAtStation <= 1) return invalidResponse;
+        }
 
-        if (lastSegment.end_station !== endStationId)
-            return invalidResponse;
-
-        return {
-            isValid: true,
-            submittedSegments
-        };
+        currentStationId = isAtStart ? segment.end_station : segment.start_station;
+        previousLineId = segment.line_id;
+        
+        submittedSegments.push(segment);
     }
+
+    if (currentStationId !== endStationId) {
+        return invalidResponse;
+    }
+
+    return {
+        isValid: true,
+        submittedSegments
+    };
+}
 
     async executeRoute(submittedSegments) {
         const allEvents = await eventsDAO.getAllEvents();
