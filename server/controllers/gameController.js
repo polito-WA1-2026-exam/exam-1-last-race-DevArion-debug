@@ -1,170 +1,93 @@
-// server/services/GameService.js
-import gameDAO from "../daos/gameDAO.js";
-import segmentsDAO from "../daos/segmentsDAO.js";
-import stationsDAO from "../daos/stationsDAO.js";
-import eventsDAO from "../daos/eventsDAO.js";
-import { buildStationLines } from "../helpers/buildStationLinesHelper.js";
+import gameService from "../services/gameService.js";
 
-class GameService {
-    async calculateMinDistance(startStationId) {
-        const allSegments = await segmentsDAO.getAllSegments();
-        const graph = {};
+const gameController = {
 
-        allSegments.forEach(segment => {
-            if (!graph[segment.start]) graph[segment.start] = [];
-            if (!graph[segment.end]) graph[segment.end] = [];
-
-            graph[segment.start].push(segment.end);
-            graph[segment.end].push(segment.start);
-        });
-
-        const queue = [startStationId];
-        const visited = new Set([startStationId]);
-        const distances = {};
-        distances[startStationId] = 0;
-
-        while (queue.length > 0) {
-            const current = queue.shift();
-            const neighbors = graph[current] || [];
-
-            neighbors.forEach(neighborId => {
-                if (!visited.has(neighborId)) {
-                    visited.add(neighborId);
-                    distances[neighborId] = distances[current] + 1;
-                    queue.push(neighborId);
-                }
-            });
-        }
-        return distances;
-    }
-
-    async generateChallenge() {
-        const allStations = await stationsDAO.getAllStations();
-        let randomStart = null;
-        let validDestinations = [];
-
-        while (validDestinations.length === 0) {
-            randomStart = allStations[Math.floor(Math.random() * allStations.length)];
-            const stops = await this.calculateMinDistance(randomStart.id);
-            validDestinations = allStations.filter(station => stops[station.id] >= 3);
-        }
-
-        const randomEnd = validDestinations[Math.floor(Math.random() * validDestinations.length)];
-
-        return {
-            startStation: randomStart,
-            endStation: randomEnd
-        };
-    }
-
-    async validateRoute(routeSegmentIds, startStationId, endStationId, startTime) {
-        const allSegments = await segmentsDAO.getAllSegments();
-        const invalidResponse = { isValid: false, submittedSegments: [] };
-
-        const segmentMap = new Map(
-            allSegments.map(segment => [segment.id, segment])
-        );
-
-        const stationLines = buildStationLines(allSegments);
-
-        const currentTime = Date.now();
-        const totalElapsedTime = (currentTime - startTime) / 1000;
-
-        if (totalElapsedTime > 90) return invalidResponse;
-        if (!routeSegmentIds || routeSegmentIds.length === 0) return invalidResponse;
-
-        const submittedSegments = routeSegmentIds.map(id => segmentMap.get(id));
-        if (submittedSegments.some(segment => segment === undefined)) return invalidResponse;
-
-        let currentPlayerLocation = startStationId;
-
-        for (let i = 0; i < submittedSegments.length; i++) {
-            const currentSegment = submittedSegments[i];
-
-            const isAtStart = currentSegment.start === currentPlayerLocation;
-            const isAtEnd = currentSegment.end === currentPlayerLocation;
-
-            if (!isAtStart && !isAtEnd) return invalidResponse;
-
-            const nextPlayerLocation = isAtStart ? currentSegment.end : currentSegment.start;
-
-            if (i < submittedSegments.length - 1) {
-                const nextSegment = submittedSegments[i + 1];
-
-                if (currentSegment.line_name !== nextSegment.line_name) {
-                    const interchangeStation = nextPlayerLocation;
-                    const linesAtStation = stationLines[interchangeStation]?.size || 0;
-
-                    if (linesAtStation <= 1) return invalidResponse;
-                }
+    async startGame(req, res, next) {
+        try {
+            if (!req.isAuthenticated()) {
+                return res.status(401).json({ error: 'Not authenticated.' });
             }
-            currentPlayerLocation = nextPlayerLocation;
-        }
 
-        if (currentPlayerLocation !== endStationId) return invalidResponse;
+            const challenge = await gameService.generateChallenge();
 
-        return {
-            isValid: true,
-            submittedSegments
-        };
-    }
+            const startTime = Date.now();
 
-    async executeRoute(submittedSegments) {
-        const allEvents = await eventsDAO.getAllEvents();
-
-        let finalScore = 20;
-        const executionSteps = [];
-
-        for (const segment of submittedSegments) {
-            const randomEvent = allEvents[Math.floor(Math.random() * allEvents.length)];
-
-            finalScore += randomEvent.effect;
-            executionSteps.push({
-                segmentId: segment.id,
-                startStation: segment.start,
-                endStation: segment.end,
-                lineName: segment.line_name,
-                eventDescription: randomEvent.description,
-                coinChange: randomEvent.effect,
-                runningTotal: finalScore
-            });
-        }
-
-        if (finalScore < 0) {
-            finalScore = 0;
-        }
-
-        return {
-            finalScore,
-            executionSteps
-        };
-    }
-
-    async validateAndExecuteRoute(routeSegmentIds, startStationId, endStationId, startTime, userId) {
-        const validationResult = await this.validateRoute(routeSegmentIds, startStationId, endStationId, startTime);
-
-        if (!validationResult.isValid) {
-            await gameDAO.createGame(userId, 0);
-            return {
-                isValid: false,
-                finalScore: 0,
-                executionSteps: []
+            req.session.activeRace = {
+                startStationId: challenge.startStation.id,
+                endStationId: challenge.endStation.id,
+                startTime
             };
+
+            return res.json({
+                startStation: challenge.startStation,
+                endStation: challenge.endStation,
+                startTime
+            });
+
+        } catch (err) {
+            return next(err);
         }
+    },
 
-        const executionResult = await this.executeRoute(validationResult.submittedSegments);
-        await gameDAO.createGame(userId, executionResult.finalScore);
+    async submitRoute(req, res, next) {
+        try {
+            if (!req.isAuthenticated()) {
+                return res.status(401).json({ error: 'Unauthorized.' });
+            }
 
-        return {
-            isValid: true,
-            finalScore: executionResult.finalScore,
-            executionSteps: executionResult.executionSteps
-        };
+            if (!req.session.activeRace) {
+                return res.status(400).json({ error: 'No active game challenge found.' });
+            }
+
+            const { startStationId, endStationId, startTime } = req.session.activeRace;
+            const { routeSegmentIds } = req.body;
+            const userId = req.user.id;
+
+            const result = await gameService.validateAndExecuteRoute(
+                routeSegmentIds,
+                startStationId,
+                endStationId,
+                startTime,
+                userId
+            );
+
+            delete req.session.activeRace;
+
+            let message = 'Route verified successfully! Commencing journey.';
+
+            if (!result.isValid) {
+                message = result.timeLimitExceeded
+                    ? 'Security Timeout: Submission arrived outside the authorized 90-second window. Score reset to 0.'
+                    : 'Invalid or incomplete route structure. Route skipped, final score reset to 0.';
+            }
+
+            return res.json({
+                success: true,
+                isValid: result.isValid,
+                finalScore: result.finalScore,
+                executionSteps: result.executionSteps,
+                message
+            });
+
+        } catch (err) {
+            return next(err);
+        }
+    },
+
+    async getUserHistory(req, res, next) {
+        try {
+            if (!req.isAuthenticated()) {
+                return res.status(401).json({ error: 'Unauthorized.' });
+            }
+
+            const userId = req.user.id;
+            const gameHistory = await gameService.getUserGameHistory(userId);
+
+            return res.json(gameHistory);
+        } catch (err) {
+            return next(err);
+        }
     }
+};
 
-    async getUserGameHistory(userId) {
-        return await gameDAO.getGamesByUserId(userId);
-    }
-}
-
-export default new GameService();
+export default gameController;
