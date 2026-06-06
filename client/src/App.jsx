@@ -1,66 +1,253 @@
-import Map from "./components/Map";
-import { getUser } from "./controllers/userController";
+import React, { useState, useEffect } from 'react';
 import { useLoaderData } from "react-router";
 import Navbar from "./components/Navbar";
+import GameMapArea from './components/GameMapArea.jsx';
+import { fetchMapData } from "./controllers/mapController";
+import { getUser } from "./controllers/userController";
+import { fetchChallenge, submitGameRoute } from "./controllers/gameController";
+import { INITIAL_COINS, PLANNING_TIME } from "./utils/gameHelpers.js";
+import SetupPanel from './components/SetupPanel.jsx';
+import InvalidResultPanel from './components/InvalidResultPanel.jsx';
+import ValidResultPanel from './components/ValidResultPanel.jsx';
+import GameStatusPanel from './components/GameStatusPanel.jsx';
+import PlanningPanel from './components/PlanningPanel.jsx';
+import ExecutionPanel from './components/ExecutionPanel.jsx';
 
-const MOCK_STATIONS = [
-  { id: 1, name: "Centrale" },
-  { id: 2, name: "Porta Susa" },
-  { id: 3, name: "Bernini" },
-  { id: 5, name: "Massaua" },
-  { id: 6, name: "Pozzo Strada" },
-  { id: 7, name: "Marche" }
-];
-
-const MOCK_SEGMENTS = [
-  { id: 1, start_station: 1, end_station: 2, line_name: "Red Line" },
-  { id: 2, start_station: 2, end_station: 3, line_name: "Red Line" },
-  { id: 4, start_station: 1, end_station: 5, line_name: "Blue Line" },
-  { id: 5, start_station: 5, end_station: 6, line_name: "Blue Line" },
-  { id: 6, start_station: 6, end_station: 7, line_name: "Blue Line" }
-];
+export async function appDataLoader() {
+  const [user, mapData] = await Promise.all([
+    getUser(),
+    fetchMapData()
+  ]);
+  return { user, mapData };
+}
 
 function App() {
-  const gridContainerStyle = {
-    display: "grid",
-    gridTemplateColumns: "6fr 4fr",
-    width: "100vw",
-    height: "100vh",
-    margin: 0,
-    padding: 0,
-    overflow: "hidden"
+  const { mapData } = useLoaderData();
+  const stations = mapData?.stations ?? [];
+  const segments = mapData?.segments ?? [];
+  const lines = mapData?.lines ?? [];
+
+  const [isGameStarted, setIsGameStarted] = useState(false);
+  const [loadingChallenge, setLoadingChallenge] = useState(false);
+  const [activeChallenge, setActiveChallenge] = useState(null);
+  const [visitedSegments, setVisitedSegments] = useState([]);
+  const [gameResult, setGameResult] = useState(null);
+  const [coins, setCoins] = useState(INITIAL_COINS);
+  const [phase, setPhase] = useState("setup");
+  const [timeLeft, setTimeLeft] = useState(PLANNING_TIME);
+  const [executionStepIndex, setExecutionStepIndex] = useState(0);
+
+  const startStation = stations.find(s => s.id === activeChallenge?.startStationId);
+  const destinationStation = stations.find(s => s.id === activeChallenge?.endStationId);
+  const activeMoves = segments;
+  const currentExecutionStep = gameResult?.executionSteps?.[executionStepIndex];
+
+  const resetGameState = () => {
+    setIsGameStarted(false);
+    setActiveChallenge(null);
+    setLoadingChallenge(false);
+    setVisitedSegments([]);
+    setGameResult(null);
+    setCoins(INITIAL_COINS);
+    setTimeLeft(PLANNING_TIME);
+    setExecutionStepIndex(0);
+    setPhase("setup");
   };
 
-  const mapWrapperStyle = {
-    width: "100%",
-    height: "100%"
+  const handleStartChallenge = async () => {
+    try {
+      setLoadingChallenge(true);
+      setGameResult(null);
+      setVisitedSegments([]);
+      setCoins(INITIAL_COINS);
+      setTimeLeft(PLANNING_TIME);
+      setExecutionStepIndex(0);
+
+      const challenge = await fetchChallenge();
+      const startId = challenge.startStation?.id;
+      const endId = challenge.endStation?.id;
+
+      setActiveChallenge({
+        startStationId: startId,
+        endStationId: endId,
+        startTime: challenge.startTime || challenge.start_time || Date.now()
+      });
+
+      setIsGameStarted(true);
+      setPhase("planning");
+    } catch (err) {
+      console.error("Failed to spin up challenge:", err);
+    } finally {
+      setLoadingChallenge(false);
+    }
   };
 
-  const panelWrapperStyle = {
-    backgroundColor: "#fafafa",
-    width: "100%",
-    height: "100%"
+  const handleTravel = (segment) => {
+    if (visitedSegments.includes(segment.id)) return;
+
+    setVisitedSegments(prev => [...prev, segment.id]);
   };
+
+  const handleSubmitScore = async () => {
+    if (!activeChallenge || phase !== "planning") return;
+
+    try {
+      const payload = {
+        routeSegmentIds: visitedSegments,
+        startStationId: activeChallenge.startStationId,
+        endStationId: activeChallenge.endStationId,
+        startTime: activeChallenge.startTime
+      };
+
+      const result = await submitGameRoute(payload);
+      setGameResult(result);
+
+      if (result.isValid) {
+        setExecutionStepIndex(0);
+        setCoins(INITIAL_COINS);
+
+        if ((result.executionSteps ?? []).length > 0) {
+          setPhase("execution");
+        } else {
+          setPhase("result");
+        }
+      } else {
+        setCoins(0);
+        setPhase("result");
+      }
+    } catch (err) {
+      console.error("Submission failed:", err);
+    }
+  };
+
+  const handleNextExecutionStep = () => {
+    if (!gameResult?.executionSteps) return;
+
+    const isLastStep = executionStepIndex + 1 >= gameResult.executionSteps.length;
+
+    if (isLastStep) {
+      setCoins(Math.max(0, gameResult.finalScore ?? 0));
+      setPhase("result");
+      return;
+    }
+
+    setExecutionStepIndex(prev => prev + 1);
+  };
+
+  const handleUndo = () => {
+    if (phase !== "planning") return;
+    if (visitedSegments.length === 0) return;
+    setVisitedSegments(prev => prev.slice(0, -1));
+  };
+
+  const handleBackToOverview = () => {
+    resetGameState();
+  };
+
+  useEffect(() => {
+    if (phase !== "planning") return;
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "planning") return;
+
+    if (timeLeft === 0) {
+      setGameResult({
+        isValid: false,
+        finalScore: 0,
+        executionSteps: [],
+        reason: "Time expired"
+      });
+
+      setCoins(0);
+      setPhase("result");
+    }
+  }, [timeLeft, phase]);
+
+  useEffect(() => {
+    if (phase !== "execution" || !currentExecutionStep) return;
+    setCoins(Math.max(0, currentExecutionStep.runningTotal ?? 0));
+  }, [phase, currentExecutionStep]);
 
   return (
-    <>
-      <Navbar username="Centrale_Admin" onLogout={() => alert("Logged out!")} />
-      <div style={gridContainerStyle}>
-        <div style={mapWrapperStyle}>
-          <Map
-            showLines={true}
-            startStation={1}
-            destinationStation={9}
-            onStationClick={(station) => console.log("Clicked:", station.name)}
-          />
-        </div>
+    <div className="flex flex-col h-screen w-screen bg-[#060b13] text-slate-100 overflow-hidden">
+      <Navbar />
+      <div className="grid grid-cols-[5fr_5fr] w-full h-[calc(100vh-4rem)]">
+        <GameMapArea
+          phase={phase}
+          stations={stations}
+          segments={segments}
+          lines={lines}
+          visitedSegments={visitedSegments}
+          activeChallenge={activeChallenge}
+          isGameStarted={isGameStarted}
+          onUndo={handleUndo}
+        />
 
+        <div className="bg-[#0b121f] border-l border-[#1e2a4a] p-6 flex flex-col gap-5 overflow-y-auto">
 
-        <div style={panelWrapperStyle}>
+          {!isGameStarted ? (
+            <SetupPanel
+              loadingChallenge={loadingChallenge}
+              onStartChallenge={handleStartChallenge}
+            />
+          ) : phase === "result" && gameResult && !gameResult.isValid ? (
+            <InvalidResultPanel
+              gameResult={gameResult}
+              onBackToOverview={handleBackToOverview}
+            />
+          ) : phase === "result" && gameResult?.isValid ? (
+            <ValidResultPanel
+              gameResult={gameResult}
+              onStartNewGame={handleStartChallenge}
+            />
+          ) : (
+            <div className="flex flex-col h-full gap-5">
+              <GameStatusPanel
+                coins={coins}
+                phase={phase}
+                timeLeft={timeLeft}
+                startStation={startStation}
+                destinationStation={destinationStation}
+                onAbort={handleBackToOverview}
+              />
 
+              {phase === "planning" ? (
+                <PlanningPanel
+                  activeMoves={activeMoves}
+                  lines={lines}
+                  stations={stations}
+                  visitedSegments={visitedSegments}
+                  onSelectSegment={handleTravel}
+                  onSubmitRoute={handleSubmitScore}
+                />
+              ) : phase === "execution" && currentExecutionStep ? (
+                <ExecutionPanel
+                  stations={stations}
+                  gameResult={gameResult}
+                  currentExecutionStep={currentExecutionStep}
+                  executionStepIndex={executionStepIndex}
+                  onNextStep={handleNextExecutionStep}
+                />
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

@@ -26,10 +26,8 @@ export default function LoginPage({ onLogin }) {
                         <span className="text-4xl">🚇</span>
                     </div>
                     <h1 className="text-5xl font-bold text-white tracking-tighter">LAST RACE</h1>
-                    <p className="text-cyan-400 mt-2 text-lg">Enter the Underground</p>
                 </div>
 
-                {/* Login Card */}
                 <div className="bg-[#111827] border border-[#1e2a4a] rounded-3xl shadow-2xl p-8">
                     <form onSubmit={handleSubmit(handleLogin)} className="space-y-6">
                         <div>
@@ -71,10 +69,6 @@ export default function LoginPage({ onLogin }) {
                         </button>
                     </form>
                 </div>
-
-                <p className="text-center text-gray-500 text-xs mt-8">
-                    SECURE TUNNEL • LAST RACE 2025/26
-                </p>
             </div>
         </div>
     );
