@@ -1,7 +1,7 @@
 import { useLoaderData, useNavigate, NavLink } from "react-router";
 import { logout } from "../controllers/userController";
 
-export default function Navbar() {
+export default function Navbar({ hideResultLinks = false }) {
     const data = useLoaderData() || {};
     const user = data.user;
 
@@ -34,31 +34,35 @@ export default function Navbar() {
                         Game
                     </NavLink>
 
-                    <NavLink
-                        to="/history"
-                        className={({ isActive }) =>
-                            `text-sm font-medium transition-colors ${
-                                isActive
-                                    ? "text-cyan-400"
-                                    : "text-slate-300 hover:text-white"
-                            }`
-                        }
-                    >
-                        My Results
-                    </NavLink>
+                    {!hideResultLinks && (
+                        <>
+                            <NavLink
+                                to="/history"
+                                className={({ isActive }) =>
+                                    `text-sm font-medium transition-colors ${
+                                        isActive
+                                            ? "text-cyan-400"
+                                            : "text-slate-300 hover:text-white"
+                                    }`
+                                }
+                            >
+                                My Results
+                            </NavLink>
 
-                    <NavLink
-                        to="/ranking"
-                        className={({ isActive }) =>
-                            `text-sm font-medium transition-colors ${
-                                isActive
-                                    ? "text-cyan-400"
-                                    : "text-slate-300 hover:text-white"
-                            }`
-                        }
-                    >
-                        Ranking
-                    </NavLink>
+                            <NavLink
+                                to="/ranking"
+                                className={({ isActive }) =>
+                                    `text-sm font-medium transition-colors ${
+                                        isActive
+                                            ? "text-cyan-400"
+                                            : "text-slate-300 hover:text-white"
+                                    }`
+                                }
+                            >
+                                Ranking
+                            </NavLink>
+                        </>
+                    )}
                 </div>
             </div>
 

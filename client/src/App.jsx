@@ -182,7 +182,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#060b13] text-slate-100 overflow-hidden">
-      <Navbar />
+      <Navbar hideResultLinks={phase === "planning" || phase === "execution"} />
       <div className="grid grid-cols-[5fr_5fr] w-full h-[calc(100vh-4rem)]">
         <GameMapArea
           phase={phase}
