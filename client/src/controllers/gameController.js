@@ -60,3 +60,22 @@ export async function fetchGameHistory() {
         throw error;
     }
 }
+
+export async function fetchRanking() {
+    try {
+        const response = await fetch(`${BASE_URL}/ranking`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching ranking:", error);
+        throw error;
+    }
+}

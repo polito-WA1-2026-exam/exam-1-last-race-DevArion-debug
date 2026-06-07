@@ -25,6 +25,30 @@ class GameDAO {
             });
         });
     }
+
+    getGeneralRanking() {
+        return new Promise((resolve, reject) => {
+            const sql = `
+                SELECT
+                    u.id AS userId,
+                    u.username,
+                    COALESCE(MAX(g.score), 0) AS bestScore,
+                    COUNT(g.id) AS gamesPlayed
+                FROM users u
+                LEFT JOIN games g ON g.user_id = u.id
+                GROUP BY u.id, u.username
+                ORDER BY bestScore DESC, u.username ASC
+            `;
+
+            db.all(sql, [], (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            });
+        });
+    }
 }
 
 export default new GameDAO();

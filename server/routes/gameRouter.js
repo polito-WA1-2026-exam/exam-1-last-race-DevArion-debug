@@ -19,4 +19,6 @@ router.post('/submit', isLoggedIn, gameController.submitRoute);
 
 router.get('/history', isLoggedIn, gameController.getUserHistory);
 
+router.get('/ranking', isLoggedIn, gameController.getGeneralRanking);
+
 export default router;

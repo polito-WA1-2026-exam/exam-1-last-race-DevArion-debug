@@ -5,8 +5,13 @@ export async function fetchMapData() {
             method: 'GET',
             credentials: 'include'
         });
-        const data = await response.json();
-        return data;
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
     } catch (error) {
         console.error("Error fetching map data:", error);
         throw error;

@@ -40,7 +40,7 @@ const gameController = {
             }
 
             const { startStationId, endStationId, startTime } = req.session.activeRace;
-            const { routeSegmentIds } = req.body;
+            const { routeSegmentIds } = req.body ?? {};
             const userId = req.user.id;
 
             const result = await gameService.validateAndExecuteRoute(
@@ -66,6 +66,7 @@ const gameController = {
                 isValid: result.isValid,
                 finalScore: result.finalScore,
                 executionSteps: result.executionSteps,
+                reason: result.reason,
                 message
             });
 
@@ -84,6 +85,20 @@ const gameController = {
             const gameHistory = await gameService.getUserGameHistory(userId);
 
             return res.json(gameHistory);
+        } catch (err) {
+            return next(err);
+        }
+    },
+
+    async getGeneralRanking(req, res, next) {
+        try {
+            if (!req.isAuthenticated()) {
+                return res.status(401).json({ error: 'Unauthorized.' });
+            }
+
+            const ranking = await gameService.getGeneralRanking();
+
+            return res.json(ranking);
         } catch (err) {
             return next(err);
         }

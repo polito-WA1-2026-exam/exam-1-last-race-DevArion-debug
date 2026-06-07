@@ -60,20 +60,28 @@ class GameService {
 
     async validateRoute(routeSegmentIds, startStationId, endStationId, startTime) {
         const allSegments = await segmentsDAO.getAllSegments();
-        const invalidResponse = { isValid: false, submittedSegments: [] };
+        const invalidResponse = (reason) => ({ isValid: false, submittedSegments: [], reason });
 
-        if (!startStationId || !endStationId || !routeSegmentIds || routeSegmentIds.length === 0) {
-            return invalidResponse;
+        if (!startStationId || !endStationId || !Number.isInteger(startTime)) {
+            return invalidResponse("Invalid challenge data");
+        }
+
+        if (!Array.isArray(routeSegmentIds) || routeSegmentIds.length === 0) {
+            return invalidResponse("Empty route");
+        }
+
+        if (!routeSegmentIds.every(Number.isInteger)) {
+            return invalidResponse("Route contains invalid segment identifiers");
         }
 
         const uniqueSegmentIds = new Set(routeSegmentIds);
         if (uniqueSegmentIds.size !== routeSegmentIds.length) {
-            return invalidResponse;
+            return invalidResponse("A segment was selected more than once");
         }
 
         const currentTime = Date.now();
         if ((currentTime - startTime) / 1000 > 90) {
-            return invalidResponse;
+            return invalidResponse("Time limit exceeded");
         }
 
         const segmentMap = new Map(allSegments.map(s => [s.id, s]));
@@ -87,14 +95,14 @@ class GameService {
             const segment = segmentMap.get(segmentId);
 
             if (!segment) {
-                return invalidResponse;
+                return invalidResponse("Unknown segment");
             }
 
             const isAtStart = segment.start_station === currentStationId;
             const isAtEnd = segment.end_station === currentStationId;
 
             if (!isAtStart && !isAtEnd) {
-                return invalidResponse;
+                return invalidResponse("Selected segment is not reachable from the current station");
             }
 
             if (previousLineId !== null && previousLineId !== segment.line_id) {
@@ -104,7 +112,7 @@ class GameService {
                     !linesAtCurrentStation.has(previousLineId) ||
                     !linesAtCurrentStation.has(segment.line_id)
                 ) {
-                    return invalidResponse;
+                    return invalidResponse("Line change attempted outside an interchange station");
                 }
             }
 
@@ -118,7 +126,7 @@ class GameService {
         }
 
         if (currentStationId !== endStationId) {
-            return invalidResponse;
+            return invalidResponse("Route does not end at the assigned destination");
         }
 
         return {
@@ -169,7 +177,9 @@ class GameService {
             return {
                 isValid: false,
                 finalScore: 0,
-                executionSteps: []
+                executionSteps: [],
+                reason: validationResult.reason,
+                timeLimitExceeded: validationResult.reason === "Time limit exceeded"
             };
         }
 
@@ -186,6 +196,10 @@ class GameService {
 
     async getUserGameHistory(userId) {
         return await gameDAO.getGamesByUserId(userId);
+    }
+
+    async getGeneralRanking() {
+        return await gameDAO.getGeneralRanking();
     }
 }
 
