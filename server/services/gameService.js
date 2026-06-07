@@ -58,7 +58,7 @@ class GameService {
         };
     }
 
-    async validateRoute(routeSegmentIds, startStationId, endStationId, startTime) {
+    async validateRoute(routeSegmentIds, startStationId, endStationId, startTime, allowExpiredRoute = false) {
         const allSegments = await segmentsDAO.getAllSegments();
         const invalidResponse = (reason) => ({ isValid: false, submittedSegments: [], reason });
 
@@ -80,7 +80,7 @@ class GameService {
         }
 
         const currentTime = Date.now();
-        if ((currentTime - startTime) / 1000 > 90) {
+        if (!allowExpiredRoute && (currentTime - startTime) / 1000 > 90) {
             return invalidResponse("Time limit exceeded");
         }
 
@@ -168,8 +168,14 @@ class GameService {
         };
     }
 
-    async validateAndExecuteRoute(routeSegmentIds, startStationId, endStationId, startTime, userId) {
-        const validationResult = await this.validateRoute(routeSegmentIds, startStationId, endStationId, startTime);
+    async validateAndExecuteRoute(routeSegmentIds, startStationId, endStationId, startTime, userId, allowExpiredRoute = false) {
+        const validationResult = await this.validateRoute(
+            routeSegmentIds,
+            startStationId,
+            endStationId,
+            startTime,
+            allowExpiredRoute
+        );
 
         if (!validationResult.isValid) {
             await gameDAO.createGame(userId, 0);

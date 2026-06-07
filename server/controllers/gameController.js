@@ -40,7 +40,7 @@ const gameController = {
             }
 
             const { startStationId, endStationId, startTime } = req.session.activeRace;
-            const { routeSegmentIds } = req.body ?? {};
+            const { routeSegmentIds, isTimeoutSubmission } = req.body ?? {};
             const userId = req.user.id;
 
             const result = await gameService.validateAndExecuteRoute(
@@ -48,7 +48,8 @@ const gameController = {
                 startStationId,
                 endStationId,
                 startTime,
-                userId
+                userId,
+                isTimeoutSubmission === true
             );
 
             delete req.session.activeRace;

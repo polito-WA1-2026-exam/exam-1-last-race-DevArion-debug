@@ -89,7 +89,7 @@ function App() {
     setVisitedSegments(prev => [...prev, segment.id]);
   };
 
-  const handleSubmitScore = useCallback(async () => {
+  const handleSubmitScore = useCallback(async ({ isTimeoutSubmission = false } = {}) => {
     if (!activeChallenge || phase !== "planning" || submittingRoute) return;
 
     try {
@@ -100,7 +100,8 @@ function App() {
         routeSegmentIds: visitedSegments,
         startStationId: activeChallenge.startStationId,
         endStationId: activeChallenge.endStationId,
-        startTime: activeChallenge.startTime
+        startTime: activeChallenge.startTime,
+        isTimeoutSubmission
       };
 
       const result = await submitGameRoute(payload);
@@ -173,7 +174,7 @@ function App() {
 
     if (timeLeft === 0) {
       const submitTimer = setTimeout(() => {
-        handleSubmitScore();
+        handleSubmitScore({ isTimeoutSubmission: true });
       }, 0);
 
       return () => clearTimeout(submitTimer);
