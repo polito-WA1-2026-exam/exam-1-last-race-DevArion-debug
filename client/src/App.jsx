@@ -194,7 +194,7 @@ function App() {
           onUndo={handleUndo}
         />
 
-        <div className="bg-[#0b121f] border-l border-[#1e2a4a] p-6 flex flex-col gap-5 overflow-y-auto">
+        <div className="bg-[#0b121f] border-l border-[#1e2a4a] p-4 flex flex-col gap-3 overflow-y-auto">
 
           {!isGameStarted ? (
             <SetupPanel
@@ -213,7 +213,7 @@ function App() {
               onStartNewGame={handleStartChallenge}
             />
           ) : (
-            <div className="flex flex-col h-full gap-5">
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
               <GameStatusPanel
                 coins={displayedCoins}
                 phase={phase}

@@ -8,7 +8,7 @@ export default function GameStatusPanel({
 }) {
   return (
     <>
-      <div className="p-4 bg-[#1a1612] rounded-xl border border-amber-500/20 flex items-center justify-between shadow-inner">
+      <div className="p-3 bg-[#1a1612] rounded-lg border border-amber-500/20 flex items-center justify-between shadow-inner">
         <div>
           <h3 className="text-xs uppercase font-bold text-amber-500 tracking-wider">
             Your Coins
@@ -22,15 +22,15 @@ export default function GameStatusPanel({
         </div>
       </div>
 
-      <div className="p-4 bg-[#111a2e] rounded-xl border border-[#1e2a4a] flex justify-between items-center">
-        <div>
+      <div className="p-3 bg-[#111a2e] rounded-lg border border-[#1e2a4a] flex justify-between items-center gap-4">
+        <div className="min-w-0">
           {phase === "planning" && (
-            <div className="text-right mb-3">
+            <div className="mb-2 flex items-center gap-2">
               <h3 className="text-xs uppercase font-bold text-rose-400 tracking-wider">
                 Time Left
               </h3>
 
-              <p className="text-xl font-black text-white">
+              <p className="text-lg font-black text-white">
                 {timeLeft}s
               </p>
             </div>
@@ -40,7 +40,7 @@ export default function GameStatusPanel({
             Mission Target
           </h2>
 
-          <p className="text-sm text-slate-300 mt-1">
+          <p className="text-sm text-slate-300 mt-1 truncate">
             Connect{" "}
             <span className="text-cyan-400 font-bold">
               {startStation?.name}
