@@ -1,4 +1,4 @@
-export default function ValidResultPanel({ gameResult, onStartNewGame }) {
+export default function ValidResultPanel({ gameResult, onStartNewGame, onBackToOverview }) {
   return (
     <div className="flex flex-col h-full justify-between py-4 animate-fade-in">
       <div className="space-y-4 my-auto text-center">
@@ -15,12 +15,21 @@ export default function ValidResultPanel({ gameResult, onStartNewGame }) {
         </p>
       </div>
 
-      <button
-        onClick={onStartNewGame}
-        className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm tracking-wider uppercase rounded-xl transition-colors"
-      >
-        Start New Game
-      </button>
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={onBackToOverview}
+          className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm tracking-wider uppercase rounded-xl border border-slate-700 transition-colors"
+        >
+          Return to Setup
+        </button>
+
+        <button
+          onClick={onStartNewGame}
+          className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm tracking-wider uppercase rounded-xl transition-colors"
+        >
+          Start New Game
+        </button>
+      </div>
     </div>
   );
 }

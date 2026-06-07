@@ -211,6 +211,7 @@ function App() {
             <ValidResultPanel
               gameResult={gameResult}
               onStartNewGame={handleStartChallenge}
+              onBackToOverview={handleBackToOverview}
             />
           ) : (
             <div className="flex min-h-0 flex-1 flex-col gap-3">
