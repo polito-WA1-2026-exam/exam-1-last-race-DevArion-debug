@@ -7,7 +7,6 @@ export default function GameMapArea({
   lines,
   visitedSegments,
   activeChallenge,
-  isGameStarted,
   onUndo
 }) {
   return (
@@ -20,7 +19,6 @@ export default function GameMapArea({
         visitedSegments={visitedSegments}
         startStation={activeChallenge?.startStationId}
         destinationStation={activeChallenge?.endStationId}
-        isGameStarted={isGameStarted}
         onStationClick={() => {}}
       />
 

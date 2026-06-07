@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from "react-router";
 import App from './App.jsx'
 import LoginPage from './pages/Login.jsx';
-import GameHistory, { gameHistoryLoader } from './pages/GameHistory.jsx';
-import { appDataLoader } from './App.jsx';
+import GameHistory from './pages/GameHistory.jsx';
+import Ranking from './pages/Ranking.jsx';
+import { appDataLoader, gameHistoryLoader, rankingLoader } from './loaders/routeLoaders.js';
 import './index.css'
 
 const router = createBrowserRouter([
@@ -17,6 +18,11 @@ const router = createBrowserRouter([
     path: "/history",
     Component: GameHistory,
     loader: gameHistoryLoader
+  },
+  {
+    path: "/ranking",
+    Component: Ranking,
+    loader: rankingLoader
   },
   {
     path: "/",

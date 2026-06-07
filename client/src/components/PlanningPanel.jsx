@@ -5,6 +5,8 @@ export default function PlanningPanel({
   lines,
   stations,
   visitedSegments,
+  submittingRoute,
+  errorMessage,
   onSelectSegment,
   onSubmitRoute
 }) {
@@ -90,12 +92,18 @@ export default function PlanningPanel({
       </div>
 
       <div className="pt-2">
+        {errorMessage && (
+          <p className="text-sm text-rose-300 mb-3 bg-rose-950/40 border border-rose-500/30 rounded-lg px-3 py-2">
+            {errorMessage}
+          </p>
+        )}
+
         <button
-          onClick={onSubmitRoute}
-          disabled={visitedSegments.length === 0}
+          onClick={() => onSubmitRoute()}
+          disabled={submittingRoute || visitedSegments.length === 0}
           className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm rounded-xl shadow-lg transition-all transform active:scale-95"
         >
-          SUBMIT ROUTE CONFIG
+          {submittingRoute ? "SUBMITTING ROUTE..." : "SUBMIT ROUTE CONFIG"}
         </button>
       </div>
     </>

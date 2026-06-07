@@ -1,4 +1,4 @@
-export default function SetupPanel({ loadingChallenge, onStartChallenge }) {
+export default function SetupPanel({ loadingChallenge, onStartChallenge, errorMessage }) {
   return (
     <div className="flex flex-col h-full justify-between py-4">
       <div className="space-y-5">
@@ -22,6 +22,12 @@ export default function SetupPanel({ loadingChallenge, onStartChallenge }) {
       >
         {loadingChallenge ? "SECURED LINKING..." : "START THE GAME"}
       </button>
+
+      {errorMessage && (
+        <p className="text-sm text-rose-300 bg-rose-950/40 border border-rose-500/30 rounded-lg px-3 py-2">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 }

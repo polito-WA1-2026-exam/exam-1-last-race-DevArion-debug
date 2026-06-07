@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLoaderData } from "react-router";
 import Navbar from "./components/Navbar";
 import GameMapArea from './components/GameMapArea.jsx';
-import { fetchMapData } from "./controllers/mapController";
-import { getUser } from "./controllers/userController";
 import { fetchChallenge, submitGameRoute } from "./controllers/gameController";
 import { INITIAL_COINS, PLANNING_TIME } from "./utils/gameHelpers.js";
 import SetupPanel from './components/SetupPanel.jsx';
@@ -12,14 +10,6 @@ import ValidResultPanel from './components/ValidResultPanel.jsx';
 import GameStatusPanel from './components/GameStatusPanel.jsx';
 import PlanningPanel from './components/PlanningPanel.jsx';
 import ExecutionPanel from './components/ExecutionPanel.jsx';
-
-export async function appDataLoader() {
-  const [user, mapData] = await Promise.all([
-    getUser(),
-    fetchMapData()
-  ]);
-  return { user, mapData };
-}
 
 function App() {
   const { mapData } = useLoaderData();
@@ -36,11 +26,17 @@ function App() {
   const [phase, setPhase] = useState("setup");
   const [timeLeft, setTimeLeft] = useState(PLANNING_TIME);
   const [executionStepIndex, setExecutionStepIndex] = useState(0);
+  const [submittingRoute, setSubmittingRoute] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const startStation = stations.find(s => s.id === activeChallenge?.startStationId);
   const destinationStation = stations.find(s => s.id === activeChallenge?.endStationId);
   const activeMoves = segments;
   const currentExecutionStep = gameResult?.executionSteps?.[executionStepIndex];
+  const displayedCoins =
+    phase === "execution" && currentExecutionStep
+      ? Math.max(0, currentExecutionStep.runningTotal ?? 0)
+      : coins;
 
   const resetGameState = () => {
     setIsGameStarted(false);
@@ -51,17 +47,21 @@ function App() {
     setCoins(INITIAL_COINS);
     setTimeLeft(PLANNING_TIME);
     setExecutionStepIndex(0);
+    setSubmittingRoute(false);
+    setActionError("");
     setPhase("setup");
   };
 
   const handleStartChallenge = async () => {
     try {
       setLoadingChallenge(true);
+      setActionError("");
       setGameResult(null);
       setVisitedSegments([]);
       setCoins(INITIAL_COINS);
       setTimeLeft(PLANNING_TIME);
       setExecutionStepIndex(0);
+      setSubmittingRoute(false);
 
       const challenge = await fetchChallenge();
       const startId = challenge.startStation?.id;
@@ -77,6 +77,7 @@ function App() {
       setPhase("planning");
     } catch (err) {
       console.error("Failed to spin up challenge:", err);
+      setActionError(err.message || "Could not start a new challenge.");
     } finally {
       setLoadingChallenge(false);
     }
@@ -88,10 +89,13 @@ function App() {
     setVisitedSegments(prev => [...prev, segment.id]);
   };
 
-  const handleSubmitScore = async () => {
-    if (!activeChallenge || phase !== "planning") return;
+  const handleSubmitScore = useCallback(async () => {
+    if (!activeChallenge || phase !== "planning" || submittingRoute) return;
 
     try {
+      setSubmittingRoute(true);
+      setActionError("");
+
       const payload = {
         routeSegmentIds: visitedSegments,
         startStationId: activeChallenge.startStationId,
@@ -117,8 +121,11 @@ function App() {
       }
     } catch (err) {
       console.error("Submission failed:", err);
+      setActionError(err.message || "Could not submit the route.");
+    } finally {
+      setSubmittingRoute(false);
     }
-  };
+  }, [activeChallenge, phase, submittingRoute, visitedSegments]);
 
   const handleNextExecutionStep = () => {
     if (!gameResult?.executionSteps) return;
@@ -165,22 +172,13 @@ function App() {
     if (phase !== "planning") return;
 
     if (timeLeft === 0) {
-      setGameResult({
-        isValid: false,
-        finalScore: 0,
-        executionSteps: [],
-        reason: "Time expired"
-      });
+      const submitTimer = setTimeout(() => {
+        handleSubmitScore();
+      }, 0);
 
-      setCoins(0);
-      setPhase("result");
+      return () => clearTimeout(submitTimer);
     }
-  }, [timeLeft, phase]);
-
-  useEffect(() => {
-    if (phase !== "execution" || !currentExecutionStep) return;
-    setCoins(Math.max(0, currentExecutionStep.runningTotal ?? 0));
-  }, [phase, currentExecutionStep]);
+  }, [timeLeft, phase, handleSubmitScore]);
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#060b13] text-slate-100 overflow-hidden">
@@ -193,7 +191,6 @@ function App() {
           lines={lines}
           visitedSegments={visitedSegments}
           activeChallenge={activeChallenge}
-          isGameStarted={isGameStarted}
           onUndo={handleUndo}
         />
 
@@ -203,6 +200,7 @@ function App() {
             <SetupPanel
               loadingChallenge={loadingChallenge}
               onStartChallenge={handleStartChallenge}
+              errorMessage={actionError}
             />
           ) : phase === "result" && gameResult && !gameResult.isValid ? (
             <InvalidResultPanel
@@ -217,7 +215,7 @@ function App() {
           ) : (
             <div className="flex flex-col h-full gap-5">
               <GameStatusPanel
-                coins={coins}
+                coins={displayedCoins}
                 phase={phase}
                 timeLeft={timeLeft}
                 startStation={startStation}
@@ -226,14 +224,16 @@ function App() {
               />
 
               {phase === "planning" ? (
-                <PlanningPanel
-                  activeMoves={activeMoves}
-                  lines={lines}
-                  stations={stations}
-                  visitedSegments={visitedSegments}
-                  onSelectSegment={handleTravel}
-                  onSubmitRoute={handleSubmitScore}
-                />
+              <PlanningPanel
+                activeMoves={activeMoves}
+                lines={lines}
+                stations={stations}
+                visitedSegments={visitedSegments}
+                submittingRoute={submittingRoute}
+                errorMessage={actionError}
+                onSelectSegment={handleTravel}
+                onSubmitRoute={handleSubmitScore}
+              />
               ) : phase === "execution" && currentExecutionStep ? (
                 <ExecutionPanel
                   stations={stations}

@@ -11,7 +11,7 @@ export default function ValidResultPanel({ gameResult, onStartNewGame }) {
         </p>
 
         <p className="text-4xl font-black text-white mt-4">
-          {Math.max(0, gameResult?.finalScore ?? 0)} PTS
+          {Math.max(0, gameResult?.finalScore ?? 0)} coins
         </p>
       </div>
 

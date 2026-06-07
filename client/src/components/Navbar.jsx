@@ -1,11 +1,5 @@
 import { useLoaderData, useNavigate, NavLink } from "react-router";
 import { logout } from "../controllers/userController";
-import { getUser } from "../controllers/userController";
-
-export async function loader() {
-    const user = await getUser();
-    return { user };
-}
 
 export default function Navbar() {
     const data = useLoaderData() || {};
@@ -51,6 +45,19 @@ export default function Navbar() {
                         }
                     >
                         My Results
+                    </NavLink>
+
+                    <NavLink
+                        to="/ranking"
+                        className={({ isActive }) =>
+                            `text-sm font-medium transition-colors ${
+                                isActive
+                                    ? "text-cyan-400"
+                                    : "text-slate-300 hover:text-white"
+                            }`
+                        }
+                    >
+                        Ranking
                     </NavLink>
                 </div>
             </div>

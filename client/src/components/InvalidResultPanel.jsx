@@ -1,8 +1,10 @@
 export default function InvalidResultPanel({ gameResult, onBackToOverview }) {
   const message =
-    gameResult?.reason === "Time expired"
+    gameResult?.reason === "Time expired" || gameResult?.reason === "Time limit exceeded"
       ? "Time expired. You scored 0 points."
-      : "The submitted network is invalid.";
+      : gameResult?.reason
+        ? `${gameResult.reason}. You scored 0 points.`
+        : "The submitted network is invalid.";
 
   return (
     <div className="flex flex-col h-full justify-between py-4 animate-fade-in">
@@ -16,7 +18,7 @@ export default function InvalidResultPanel({ gameResult, onBackToOverview }) {
         </p>
 
         <p className="text-4xl font-black text-white mt-4">
-          {gameResult?.finalScore ?? 0} PTS
+          {gameResult?.finalScore ?? 0} coins
         </p>
       </div>
 

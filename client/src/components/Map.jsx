@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function Map({
   showLines = true,
   stations = [],
@@ -8,7 +6,6 @@ export default function Map({
   visitedSegments = [],
   startStation,
   destinationStation,
-  isGameStarted = false,
   onStationClick
 }) {
   return (

@@ -1,16 +1,6 @@
 import { useLoaderData } from "react-router";
-import { fetchGameHistory } from "../controllers/gameController.js"
-import { getUser } from "../controllers/userController";
 import Navbar from "../components/Navbar.jsx";
 
-export async function gameHistoryLoader() {
-  const [user, games] = await Promise.all([
-    getUser(),
-    fetchGameHistory()
-  ]);
-
-  return { user, games };
-}
 export default function GameHistory() {
   const { games } = useLoaderData();
 
