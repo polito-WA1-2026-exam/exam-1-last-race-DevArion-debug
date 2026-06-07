@@ -10,7 +10,6 @@
 
 ## API Server
 
-- Run the server with `cd server; nodemon index.js` as required by the exam environment. If `nodemon` is not installed globally on a local machine, use `npm run dev` from `server`, which runs the local `nodemon` dependency.
 - POST `/api/sessions`
   - Login endpoint. Receives credentials in the request body as `{ email, password }`, verifies the salted password hash with Passport/session login, and creates the session cookie.
   - Response body: logged user `{ id, username, email }`; returns `401` if credentials are invalid.
@@ -66,8 +65,6 @@
 
 ## Screenshots
 
-![Login and instructions](./img/login.png)
-
 ![General ranking](./img/ranking.png)
 
 ![During a game](./img/game.png)
@@ -80,3 +77,6 @@
 
 ## Use of AI Tools
 
+- Gemini was used for suggestions about CSS improvements and UI layout.
+- ChatGPT was used to help debug code, refactor parts of the implementation, improve documentation, and review database seeding choices.
+- Grok was used to gather ideas about how to structure the game map.
